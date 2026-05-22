@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>公众号文章采集</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab { padding: 10px 20px; border: none; border-radius: 6px 6px 0 0; font-size: 14px; cursor: pointer; background: #ddd; color: #666; }
+  .tab.active { background: #fff; color: #1890ff; font-weight: 500; }
+  .tab:hover:not(.active) { background: #ccc; }
+
+  .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .card-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: #333; }
+
+  .row { margin-bottom: 12px; }
+  label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+  input[type="text"], input[type="password"], input[type="number"], select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; letter-spacing: 0.5px; background: #fff; }
+  input:focus { outline: none; border-color: #1890ff; }
+  input::placeholder { letter-spacing: normal; }
+  .inline-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #333; }
+  .inline-check input { width: auto; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn { padding: 8px 16px; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; }
+  .btn-primary { background: #1890ff; color: #fff; }
+  .btn-primary:hover { background: #40a9ff; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-secondary { background: #f0f0f0; color: #333; }
+  .btn-secondary:hover { background: #e0e0e0; }
+
+  .log-box { background: #1e1e1e; color: #d4d4d4; border-radius: 4px; padding: 12px; font-family: 'Consolas', monospace; font-size: 12px; max-height: 150px; overflow-y: auto; }
+  .log-line { margin-bottom: 4px; line-height: 1.4; }
+  .log-line.success { color: #4ec9b0; }
+  .log-line.error { color: #f48771; }
+  .log-line.info { color: #9cdcfe; }
+
+  .hidden { display: none; }
+
+  /* 任务页面布局 */
+  .search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .search-bar input { flex: 1; }
+
+  /* 左右分栏布局 */
+  .main-content { display: flex; gap: 16px; }
+
+  /* 左侧公众号列表 */
+  .account-panel { width: 280px; flex-shrink: 0; }
+  .account-panel .panel-title { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+  #accountList { max-height: min(520px, calc(100vh - 260px)); overflow-y: auto; padding-right: 4px; }
+  #accountList::-webkit-scrollbar { width: 8px; }
+  #accountList::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 4px; }
+  #accountList::-webkit-scrollbar-thumb:hover { background: #bfbfbf; }
+
+  .account-item { display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+  .account-item:hover { border-color: #1890ff; background: #f0f7ff; }
+  .account-item.selected { border-color: #1890ff; background: #e6f7ff; }
+  .account-item .avatar { width: 48px; height: 48px; border-radius: 50%; background: #ddd; margin-right: 12px; flex-shrink: 0; object-fit: cover; }
+  .account-item .avatar-placeholder { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-right: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: bold; }
+  .account-item .info { flex: 1; min-width: 0; }
+  .account-item .name { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .account-item .intro { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 右侧文章列表 */
+  .article-panel { flex: 1; min-width: 0; }
+  .article-panel .panel-title { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+  .article-panel .panel-title .selected-name { color: #1890ff; font-weight: normal; }
+
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter-bar input { flex: 1; }
+
+  .article-list { max-height: 400px; overflow-y: auto; }
+
+  .article-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+  .article-item:last-child { border-bottom: none; }
+  .article-item:hover { background: #fafafa; }
+  .article-item input[type="checkbox"] { width: 18px; height: 18px; margin-right: 12px; cursor: pointer; flex-shrink: 0; }
+  .article-item .cover { width: 80px; height: 60px; border-radius: 4px; background: #f0f0f0; margin-right: 12px; flex-shrink: 0; object-fit: cover; }
+  .article-item .cover-placeholder { width: 80px; height: 60px; border-radius: 4px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); margin-right: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 24px; }
+  .article-item .info { flex: 1; min-width: 0; }
+  .article-item .title { font-size: 14px; color: #333; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .article-item .meta { font-size: 12px; color: #999; }
+  .article-item .meta .date { margin-right: 12px; }
+
+  .publish-bar { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
+  .publish-bar .count { font-size: 13px; color: #666; }
+
+  /* 使用说明页面 */
+  .help-section { margin-bottom: 24px; }
+  .help-section h3 { font-size: 16px; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+  .help-section p { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 12px; }
+
+  .help-item { background: #f9f9f9; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .help-label { font-size: 14px; font-weight: 500; color: #1890ff; margin-bottom: 8px; }
+  .help-desc { font-size: 13px; color: #666; line-height: 1.6; }
+  .help-desc a { color: #1890ff; text-decoration: none; }
+
+  .help-tip { background: #fff7e6; border-left: 4px solid #faad14; padding: 12px; border-radius: 4px; font-size: 13px; color: #666; }
+  .help-warn { color: #ff4d4f; font-size: 13px; margin-top: 8px; }
+
+  .help-step { display: flex; align-items: flex-start; margin-bottom: 16px; }
+  .step-num { width: 28px; height: 28px; background: #1890ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; flex-shrink: 0; margin-right: 12px; }
+  .step-content { flex: 1; padding-top: 4px; }
+  .step-title { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 4px; }
+  .step-desc { font-size: 13px; color: #999; }
+
+  .help-qa { margin-bottom: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px; }
+  .qa-q { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 8px; }
+  .qa-a { font-size: 13px; color: #666; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tabs">
+    <button class="tab" id="tabConfig">🔧 配置</button>
+    <button class="tab" id="tabTask">📋 任务</button>
+    <button class="tab active" id="tabHelp">❓ 使用说明</button>
+  </div>
+
+  <!-- 配置页面 -->
+  <div id="pageConfig" class="hidden">
+    <div class="card">
+      <div class="card-title">🔑 密钥配置</div>
+      <div class="row">
+        <label>Auth Key（第三方API）</label>
+        <input type="text" id="authKey" placeholder="第三方API密钥">
+      </div>
+      <div class="row">
+        <label>AppID（微信公众平台）</label>
+        <input type="text" id="appId" placeholder="wx...">
+      </div>
+      <div class="row">
+        <label>AppSecret（微信公众平台）</label>
+        <input type="text" id="appSecret" placeholder="...">
+      </div>
+      <div class="row">
+        <label class="inline-check">
+          <input type="checkbox" id="aiEnabled">
+          启用 AI 增强搜索和内容处理
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="row">
+          <label>AI 服务商</label>
+          <select id="aiProvider">
+            <option value="minimax">MiniMax</option>
+            <option value="openai-compatible">OpenAI 兼容接口</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>AI 模型</label>
+          <input type="text" id="aiModel" placeholder="MiniMax-M2.7-highspeed">
+        </div>
+      </div>
+      <div class="row">
+        <label>AI Base URL</label>
+        <input type="text" id="aiBaseUrl" placeholder="https://api.minimaxi.com/v1">
+      </div>
+      <div class="row">
+        <label>AI API Key</label>
+        <input type="password" id="aiApiKey" placeholder="sk-...">
+      </div>
+      <div class="row">
+        <label class="inline-check">
+          <input type="checkbox" id="appendQrEnabled">
+          发布时在文章末尾追加自己的二维码
+        </label>
+      </div>
+      <div class="row">
+        <label class="inline-check">
+          <input type="checkbox" id="removeOriginalQrEnabled">
+          尝试删除原文尾部二维码
+        </label>
+      </div>
+      <div class="row">
+        <label>自己的二维码图片</label>
+        <div class="search-bar">
+          <input type="text" id="qrImagePath" placeholder="选择本地二维码图片或填写图片 URL">
+          <button class="btn btn-secondary" id="chooseQrBtn">选择</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="saveBtn">保存</button>
+      <button class="btn btn-secondary" id="testAiBtn">测试 AI</button>
+    </div>
+  </div>
+
+  <!-- 任务页面 -->
+  <div id="pageTask" class="hidden">
+    <!-- 搜索框 -->
+    <div class="card">
+      <div class="search-bar">
+        <input type="text" id="searchAccountInput" placeholder="输入公众号名称搜索">
+        <button class="btn btn-primary" id="searchAccountBtn">搜索</button>
+      </div>
+    </div>
+
+    <!-- 主内容区：左右分栏 -->
+    <div class="main-content">
+      <!-- 左侧：公众号列表 -->
+      <div class="card account-panel">
+        <div class="panel-title">📢 公众号列表</div>
+        <div id="accountList"></div>
+      </div>
+
+      <!-- 右侧：文章列表 -->
+      <div class="card article-panel" id="articleCard">
+        <div class="panel-title">📄 文章列表 <span class="selected-name" id="selectedAccount"></span></div>
+        <div class="filter-bar">
+          <input type="text" id="filterKeyword" placeholder="输入关键词筛选">
+          <button class="btn btn-secondary" id="filterBtn">筛选</button>
+          <button class="btn btn-secondary" id="clearFilterBtn">重置</button>
+        </div>
+        <div class="article-list" id="articleList"></div>
+        <div class="publish-bar">
+          <button class="btn btn-primary" id="publishBtn" disabled>发布选中文章</button>
+          <span class="count" id="selectedCount"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="card">
+      <div class="card-title">📝 执行日志</div>
+      <div class="log-box" id="logBox">
+        <div class="log-line info">等待操作...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用说明页面 -->
+  <div id="pageHelp">
+    <div class="card">
+      <div class="card-title">📖 使用说明</div>
+
+      <div class="help-section">
+        <h3>一、配置密钥</h3>
+        <p>首次使用需要配置三个密钥信息：</p>
+
+        <div class="help-item">
+          <div class="help-label">Auth Key（第三方API密钥）</div>
+          <div class="help-desc">
+            <p>用于搜索公众号、获取文章列表、下载文章内容。</p>
+            <p>获取地址：<a href="https://down.mptext.top/dashboard/api" target="_blank">https://down.mptext.top/dashboard/api</a></p>
+            <p>步骤：微信扫码登录 → 左侧目录点击「API」→ 查询 API 密钥</p>
+            <p class="help-warn">⚠️ 注意：密钥有效期为 4 天，过期后需重新登录获取</p>
+            <img id="imgAuthKey" alt="API密钥获取示意" style="max-width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid #eee;">
+          </div>
+        </div>
+
+        <div class="help-item">
+          <div class="help-label">AppID（微信公众平台）</div>
+          <div class="help-desc">
+            <p>微信公众平台的唯一标识。</p>
+            <p>获取地址：<a href="https://developers.weixin.qq.com/platform" target="_blank">https://developers.weixin.qq.com/platform</a></p>
+            <p>步骤：微信扫码登录 → 选择自己的公众号 → 「基础信息」→「APPID</p>
+            <img id="imgAppId" alt="AppID和AppSecret获取示意" style="max-width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid #eee;">
+          </div>
+        </div>
+
+        <div class="help-item">
+          <div class="help-label">AppSecret（微信公众平台）</div>
+          <div class="help-desc">
+            <p>与 AppID 配套使用，用于获取 AccessToken。</p>
+            <p>获取方式：同 AppID，在同一页面获取</p>
+            <img id="imgAppSecret" alt="AppSecret获取示意" style="max-width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid #eee;">
+          </div>
+        </div>
+
+        <div class="help-item">
+          <div class="help-label">⚠️ 配置 API IP 白名单</div>
+          <div class="help-desc">
+            <p>重要：需要在微信公众平台配置 IP 白名单，否则 API 调用会失败！</p>
+            <p>步骤：开发设置 → IP 白名单 → 添加本机 IP</p>
+            <p>查看本机 IP：<a href="https://ip.cn" target="_blank">https://ip.cn</a></p>
+            <img id="imgBaimingdan" alt="IP白名单配置示意" style="max-width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid #eee;">
+          </div>
+        </div>
+
+        <div class="help-tip">
+          <strong>提示：</strong>配置完成后点击「保存」按钮，配置会自动保存到本地。
+        </div>
+      </div>
+
+      <div class="help-section">
+        <h3>二、使用流程</h3>
+
+        <div class="help-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">搜索公众号</div>
+            <div class="step-desc">在顶部的搜索框输入公众号名称，点击「搜索」按钮</div>
+          </div>
+        </div>
+
+        <div class="help-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">选择公众号</div>
+            <div class="step-desc">点击左侧列表中的公众号，右侧会显示该公众号的文章列表</div>
+          </div>
+        </div>
+
+        <div class="help-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">筛选文章</div>
+            <div class="step-desc">在筛选框输入关键词，点击「筛选」按钮过滤文章</div>
+          </div>
+        </div>
+
+        <div class="help-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">发布文章</div>
+            <div class="step-desc">勾选要发布的文章，点击「发布选中文章」按钮</div>
+          </div>
+        </div>
+
+        <div class="help-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">完成</div>
+            <div class="step-desc">发布成功后，文章会出现在微信公众平台的「草稿箱」中</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <h3>三、常见问题</h3>
+
+        <div class="help-qa">
+          <div class="qa-q">Q: 文章封面图不显示怎么办？</div>
+          <div class="qa-a">A: 确保网络可以正常访问微信图片域名。如持续有问题，尝试重启应用。</div>
+        </div>
+
+        <div class="help-qa">
+          <div class="qa-q">Q: 发布失败怎么解决？</div>
+          <div class="qa-a">A: 检查 AppID 和 AppSecret 是否正确，确保微信公众平台账号有素材库权限。详细错误信息可在底部日志查看。</div>
+        </div>
+
+        <div class="help-qa">
+          <div class="qa-q">Q: 请求超时怎么办？</div>
+          <div class="qa-a">A: 系统会自动重试最多3次。如网络不稳定，建议稍后再试。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

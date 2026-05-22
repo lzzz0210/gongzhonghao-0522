@@ -1,0 +1,29 @@
+{
+  "name": "gongzhonghao-gui",
+  "productName": "公众号文章采集",
+  "version": "1.0.6",
+  "description": "微信公众号文章采集工具",
+  "main": ".webpack/main",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+    "@electron-forge/plugin-webpack": "^7.11.4",
+    "babel-loader": "^10.1.1",
+    "css-loader": "^7.1.4",
+    "electron": "^28.3.3",
+    "html-webpack-plugin": "^5.6.7",
+    "style-loader": "^4.0.0"
+  }
+}
