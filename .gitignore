@@ -10,6 +10,10 @@ node_modules/
 # Electron 构建产物
 gongzhonghao-gui/out/
 
+# 本地分发压缩包/源码快照
+gongzhonghao-gui-source-*/
+gongzhonghao-gui-source-*.zip
+
 # 系统文件
 .DS_Store
 Thumbs.db

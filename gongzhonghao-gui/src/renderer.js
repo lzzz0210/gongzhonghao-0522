@@ -13,6 +13,65 @@ function hasEffectiveSecret(config, field) {
   return Boolean(config[field] || currentConfig?.[flag])
 }
 
+const AI_PROVIDER_PRESETS = {
+  minimax: {
+    baseUrl: 'https://api.minimaxi.com/v1',
+    model: 'MiniMax-M2.7-highspeed'
+  },
+  deepseek: {
+    baseUrl: 'https://api.deepseek.com',
+    model: 'deepseek-v4-flash'
+  },
+  'aliyun-qwen': {
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen3.6-plus'
+  },
+  kimi: {
+    baseUrl: 'https://api.moonshot.cn/v1',
+    model: 'kimi-k2.6'
+  },
+  'zhipu-glm': {
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-5.1'
+  },
+  'volcengine-doubao': {
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    model: 'doubao-seed-1-6-250615'
+  },
+  'baidu-qianfan': {
+    baseUrl: 'https://qianfan.baidubce.com/v2',
+    model: 'ernie-5.0'
+  },
+  'tencent-hunyuan': {
+    baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1',
+    model: 'hunyuan-turbos-latest'
+  },
+  'iflytek-spark': {
+    baseUrl: 'https://spark-api-open.xf-yun.com/v1',
+    model: '4.0Ultra'
+  },
+  siliconflow: {
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    model: 'Pro/zai-org/GLM-4.7'
+  }
+}
+
+function getAiProviderPreset(provider) {
+  return AI_PROVIDER_PRESETS[provider] || null
+}
+
+function applyAiProviderPreset(provider, options = {}) {
+  const preset = getAiProviderPreset(provider)
+  if (!preset) return
+
+  if (options.force || !aiBaseUrlInput.value.trim()) {
+    aiBaseUrlInput.value = preset.baseUrl
+  }
+  if (options.force || !aiModelInput.value.trim()) {
+    aiModelInput.value = preset.model
+  }
+}
+
 function refreshSecretPlaceholders() {
   authKeyInput.placeholder = currentConfig?.hasAuthKey ? '已保存，留空表示不修改' : '第三方API密钥'
   appSecretInput.placeholder = currentConfig?.hasAppSecret ? '已保存，留空表示不修改' : '...'
@@ -92,14 +151,16 @@ function log(msg, type = 'info') {
 
 // ========== 配置保存 ==========
 function readConfigForm() {
+  const aiProvider = aiProviderInput.value
+  const aiPreset = getAiProviderPreset(aiProvider)
   return {
     authKey: authKeyInput.value.trim(),
     appId: appIdInput.value.trim(),
     appSecret: appSecretInput.value.trim(),
     aiEnabled: aiEnabledInput.checked,
-    aiProvider: aiProviderInput.value,
-    aiBaseUrl: aiBaseUrlInput.value.trim() || 'https://api.minimaxi.com/v1',
-    aiModel: aiModelInput.value.trim() || 'MiniMax-M2.7-highspeed',
+    aiProvider,
+    aiBaseUrl: aiBaseUrlInput.value.trim() || aiPreset?.baseUrl || '',
+    aiModel: aiModelInput.value.trim() || aiPreset?.model || '',
     aiApiKey: aiApiKeyInput.value.trim(),
     appendQrEnabled: appendQrEnabledInput.checked,
     removeOriginalQrEnabled: removeOriginalQrEnabledInput.checked,
@@ -170,6 +231,10 @@ chooseQrBtn.addEventListener('click', async () => {
   } catch (err) {
     log(`选择二维码失败: ${err.message}`, 'error')
   }
+})
+
+aiProviderInput.addEventListener('change', () => {
+  applyAiProviderPreset(aiProviderInput.value, { force: true })
 })
 
 // ========== 搜索公众号 ==========
@@ -461,8 +526,10 @@ async function init() {
     appSecretInput.value = cfg.appSecret || ''
     aiEnabledInput.checked = Boolean(cfg.aiEnabled)
     aiProviderInput.value = cfg.aiProvider || 'minimax'
-    aiBaseUrlInput.value = cfg.aiBaseUrl || 'https://api.minimaxi.com/v1'
-    aiModelInput.value = cfg.aiModel || 'MiniMax-M2.7-highspeed'
+    if (!aiProviderInput.value) aiProviderInput.value = 'minimax'
+    const aiPreset = getAiProviderPreset(aiProviderInput.value)
+    aiBaseUrlInput.value = cfg.aiBaseUrl || aiPreset?.baseUrl || ''
+    aiModelInput.value = cfg.aiModel || aiPreset?.model || ''
     aiApiKeyInput.value = cfg.aiApiKey || ''
     appendQrEnabledInput.checked = Boolean(cfg.appendQrEnabled)
     removeOriginalQrEnabledInput.checked = Boolean(cfg.removeOriginalQrEnabled)

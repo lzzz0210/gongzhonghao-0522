@@ -2,7 +2,7 @@
 
 `gongzhonghao-gui` 是一个基于 Electron 的桌面应用，用于搜索微信公众号、查看文章列表、筛选文章，并把选中的文章发布到微信公众号草稿箱。
 
-当前版本：`1.0.7`
+当前版本：`1.0.8`
 
 ## 主要功能
 
@@ -82,6 +82,21 @@ Windows 下常见产物：
 | AppSecret | 微信公众号后台的 AppSecret |
 | AI Base URL / Model / API Key | 可选，启用 AI 搜索增强时填写 |
 | 二维码图片 | 可选，用于发布时追加自己的二维码 |
+
+AI 服务商下拉框内置国内常用 OpenAI 兼容接口预设，选择后会自动填充默认 Base URL 和推荐模型，模型字段仍可手动修改：
+
+| 服务商 | 默认 Base URL | 默认模型 |
+| --- | --- | --- |
+| MiniMax | `https://api.minimaxi.com/v1` | `MiniMax-M2.7-highspeed` |
+| DeepSeek | `https://api.deepseek.com` | `deepseek-v4-flash` |
+| 阿里百炼 / 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen3.6-plus` |
+| Kimi / Moonshot | `https://api.moonshot.cn/v1` | `kimi-k2.6` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-5.1` |
+| 火山方舟 / 豆包 | `https://ark.cn-beijing.volces.com/api/v3` | `doubao-seed-1-6-250615` |
+| 百度千帆 / 文心 | `https://qianfan.baidubce.com/v2` | `ernie-5.0` |
+| 腾讯混元 | `https://api.hunyuan.cloud.tencent.com/v1` | `hunyuan-turbos-latest` |
+| 讯飞星火 | `https://spark-api-open.xf-yun.com/v1` | `4.0Ultra` |
+| 硅基流动 | `https://api.siliconflow.cn/v1` | `Pro/zai-org/GLM-4.7` |
 
 还需要在微信公众号后台配置 API IP 白名单，否则微信接口可能返回无权限或 IP 不在白名单的错误。
 
