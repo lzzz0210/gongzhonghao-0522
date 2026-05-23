@@ -8,6 +8,17 @@ function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+function hasEffectiveSecret(config, field) {
+  const flag = `has${field.charAt(0).toUpperCase()}${field.slice(1)}`
+  return Boolean(config[field] || currentConfig?.[flag])
+}
+
+function refreshSecretPlaceholders() {
+  authKeyInput.placeholder = currentConfig?.hasAuthKey ? '已保存，留空表示不修改' : '第三方API密钥'
+  appSecretInput.placeholder = currentConfig?.hasAppSecret ? '已保存，留空表示不修改' : '...'
+  aiApiKeyInput.placeholder = currentConfig?.hasAiApiKey ? '已保存，留空表示不修改' : 'sk-...'
+}
+
 // ========== 界面元素 ==========
 const tabConfig = document.getElementById('tabConfig')
 const tabTask = document.getElementById('tabTask')
@@ -98,11 +109,11 @@ function readConfigForm() {
 
 saveBtn.addEventListener('click', async () => {
   const config = readConfigForm()
-  if (!config.authKey || !config.appId || !config.appSecret) {
+  if (!hasEffectiveSecret(config, 'authKey') || !config.appId || !hasEffectiveSecret(config, 'appSecret')) {
     log('请填写完整的密钥配置', 'error')
     return
   }
-  if (config.aiEnabled && (!config.aiApiKey || !config.aiBaseUrl || !config.aiModel)) {
+  if (config.aiEnabled && (!hasEffectiveSecret(config, 'aiApiKey') || !config.aiBaseUrl || !config.aiModel)) {
     log('启用 AI 后需要填写 AI Base URL、模型和 API Key', 'error')
     return
   }
@@ -112,13 +123,17 @@ saveBtn.addEventListener('click', async () => {
   }
   saveBtn.disabled = true
   try {
-    await window.electronAPI.saveConfig(config)
-    currentConfig = config
-    log('配置已保存，正在验证...', 'info')
+    log('正在验证配置...', 'info')
 
     const validation = await window.electronAPI.validateConfig(config)
     if (validation.success) {
-      log('配置验证通过', 'success')
+      const result = await window.electronAPI.saveConfig(config)
+      currentConfig = result.config || currentConfig
+      authKeyInput.value = ''
+      appSecretInput.value = ''
+      aiApiKeyInput.value = ''
+      refreshSecretPlaceholders()
+      log('配置验证通过并已保存', 'success')
     } else {
       validation.errors.forEach(error => log(error, 'error'))
     }
@@ -131,7 +146,7 @@ saveBtn.addEventListener('click', async () => {
 
 testAiBtn.addEventListener('click', async () => {
   const config = readConfigForm()
-  if (!config.aiEnabled || !config.aiApiKey || !config.aiBaseUrl || !config.aiModel) {
+  if (!config.aiEnabled || !hasEffectiveSecret(config, 'aiApiKey') || !config.aiBaseUrl || !config.aiModel) {
     log('请先启用 AI，并填写 AI Base URL、模型和 API Key', 'error')
     return
   }
@@ -167,7 +182,7 @@ async function searchAccount() {
   const keyword = searchAccountInput.value.trim()
   if (!keyword) return
 
-  if (!currentConfig || !currentConfig.authKey) {
+  if (!currentConfig || !currentConfig.hasAuthKey) {
     log('请先在配置页面填写并保存密钥', 'error')
     return
   }
@@ -251,6 +266,8 @@ async function selectAccount(account, element) {
 
   const name = account.nickname || account.name || '未知'
   selectedAccount = account
+  selectedArticles.clear()
+  updateSelectedCount()
   selectedAccountEl.textContent = name ? ` - ${name}` : ''
 
   log(`已选择公众号: ${name}`)
@@ -371,7 +388,7 @@ publishBtn.addEventListener('click', async () => {
   publishBtn.disabled = true
 
   try {
-    if (!currentConfig || !currentConfig.authKey || !currentConfig.appId || !currentConfig.appSecret) {
+    if (!currentConfig || !currentConfig.hasAuthKey || !currentConfig.appId || !currentConfig.hasAppSecret) {
       log('请先在配置页面填写并保存密钥', 'error')
       return
     }
@@ -450,6 +467,7 @@ async function init() {
     appendQrEnabledInput.checked = Boolean(cfg.appendQrEnabled)
     removeOriginalQrEnabledInput.checked = Boolean(cfg.removeOriginalQrEnabled)
     qrImagePathInput.value = cfg.qrImagePath || ''
+    refreshSecretPlaceholders()
     log('配置加载完成')
   } catch (err) {
     log('配置加载失败', 'error')

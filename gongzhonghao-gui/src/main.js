@@ -1,4 +1,4 @@
-const { app, ipcMain, BrowserWindow, dialog } = require('electron')
+const { app, ipcMain, BrowserWindow, dialog, shell } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
 const { createConfigStore } = require('./main-process/config-store')
@@ -138,11 +138,11 @@ async function uploadArticleImages(content, accessToken, log) {
 }
 
 function registerIpcHandlers() {
-  ipcMain.handle('get-config', () => configStore.loadConfig())
+  ipcMain.handle('get-config', () => configStore.loadPublicConfig())
 
   ipcMain.handle('save-config', (event, config) => {
-    configStore.saveConfig(config)
-    return { success: true }
+    configStore.saveConfig(config, { preserveSecrets: true })
+    return { success: true, config: configStore.loadPublicConfig() }
   })
 
   ipcMain.handle('choose-qr-image', async () => {
@@ -159,6 +159,7 @@ function registerIpcHandlers() {
   })
 
   ipcMain.handle('validate-config', async (event, config) => {
+    config = configStore.mergePublicConfig(config)
     const errors = []
 
     try {
@@ -180,6 +181,7 @@ function registerIpcHandlers() {
   })
 
   ipcMain.handle('test-ai-config', async (event, config) => {
+    config = configStore.mergePublicConfig(config)
     if (!aiClient.isConfigured(config)) {
       throw new Error('请先启用 AI，并填写 AI Base URL、模型和 API Key')
     }
@@ -322,6 +324,7 @@ function registerIpcHandlers() {
       }
       log(`完成: 成功 ${results.published}, 失败 ${results.failed}`)
     } catch (err) {
+      results.error = err.message
       log(`错误: ${err.message}`)
     } finally {
       runningTask = false
@@ -358,8 +361,22 @@ function createMainWindow() {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false,
-      webSecurity: false
+      nodeIntegration: false
+    }
+  })
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {})
+    }
+    return { action: 'deny' }
+  })
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url === MAIN_WINDOW_WEBPACK_ENTRY) return
+    event.preventDefault()
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {})
     }
   })
 

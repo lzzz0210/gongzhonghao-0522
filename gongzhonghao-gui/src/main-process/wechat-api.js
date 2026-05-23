@@ -4,12 +4,21 @@ const http = require('http')
 const https = require('https')
 
 function createWechatApi(httpRequest, withRetry) {
-  let accessTokenCache = { token: null, expiresAt: 0 }
+  let accessTokenCache = { appId: '', appSecret: '', token: null, expiresAt: 0 }
 
   async function getAccessToken(appId, appSecret) {
     const now = Date.now()
-    if (accessTokenCache.token && accessTokenCache.expiresAt > now) {
+    if (
+      accessTokenCache.token &&
+      accessTokenCache.expiresAt > now &&
+      accessTokenCache.appId === appId &&
+      accessTokenCache.appSecret === appSecret
+    ) {
       return accessTokenCache.token
+    }
+
+    if (!appId || !appSecret) {
+      throw new Error('缺少微信公众号 AppID 或 AppSecret')
     }
 
     const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`
@@ -17,6 +26,8 @@ function createWechatApi(httpRequest, withRetry) {
     if (data.errcode) throw new Error(`获取 token 失败: ${data.errmsg}`)
 
     accessTokenCache = {
+      appId,
+      appSecret,
       token: data.access_token,
       expiresAt: now + (data.expires_in - 300) * 1000
     }
@@ -162,6 +173,10 @@ function createWechatApi(httpRequest, withRetry) {
         })
       })
       req.on('error', reject)
+      req.setTimeout(30000, () => {
+        req.destroy()
+        reject(new Error('图片上传超时'))
+      })
       req.write(body)
       req.end()
     })
